@@ -1,92 +1,228 @@
 # Centralized Config & Secret Manager
 
-A lightweight, secure backend service for storing, managing, and distributing configuration values and secrets across projects and environments. Designed for developers, teams, and startups to enforce **least privilege access**, **audit trails**, and **versioned secret management**.
+A lightweight, secure backend service for storing, managing, and distributing configuration values and secrets across projects and environments. Built with **FastAPI** and **MongoDB** for modern, scalable configuration management.
 
 ---
 
-## Features
+## 🚀 Current Implementation Status
 
-* Role-based access control (Admin, Editor, Reader)
-* Multi-environment support (Dev, Staging, Prod)
-* CRUD operations for secrets
-* Encryption at rest and in transit
-* Versioning and audit logs for secret changes
-* Token-based API access for services/CI pipelines
-* Optional caching for high-frequency reads
+This project is currently in **Phase 1** - Core CRUD API implementation completed.
+
+**📋 See detailed development progress:** [Progress.md](./Progress.md)
 
 ---
 
-## Tech Stack
+## ✅ Implemented Features
 
-* **Backend:** Python 3 + [FastAPI](https://fastapi.tiangolo.com/)
-* **Database:** MongoDB (NoSQL, document-based storage)
-* **Cache (optional):** Redis
-* **Authentication:** JWT tokens
-* **Encryption:** AES/Fernet (cryptography library)
-* **Containerization:** Docker
-* **Testing:** Pytest
+* **Complete CRUD Operations** for configuration management
+* **Multi-environment support** (Dev, Staging, Prod)
+* **Service-based configuration** grouping
+* **RESTful API** with proper HTTP status codes
+* **MongoDB integration** with async operations
+* **Layered architecture** (Routes → Services → Database)
+* **Comprehensive error handling**
+* **Real-world design** supporting multiple configs per service+environment
 
 ---
 
-## Getting Started
+## 🛠 Tech Stack
+
+* **Backend:** Python 3.11+ + [FastAPI](https://fastapi.tiangolo.com/)
+* **Database:** MongoDB Atlas (NoSQL, document-based storage)
+* **Async Driver:** Motor (async MongoDB driver)
+* **Validation:** Pydantic models
+* **Server:** Uvicorn (ASGI server)
+
+---
+
+## 📋 API Endpoints
+
+### **Configuration Management**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/configs` | Create a new configuration |
+| `GET` | `/configs` | Get all configurations |
+| `GET` | `/configs/{config_id}` | Get configuration by ID |
+| `GET` | `/configs/search?service_name=X&env_name=Y` | Get configs by service and environment |
+| `PUT` | `/configs/{config_id}` | Update configuration |
+| `DELETE` | `/configs/{config_id}` | Delete configuration |
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
 * Python 3.11+
-* MongoDB instance
-* Redis instance (optional)
-* Docker (for containerized deployment)
+* MongoDB Atlas account (or local MongoDB instance)
+* Git
+
+### Installation
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Y45H-GitHub/centralized-config-secret-manager.git
+   cd centralized-config-secret-manager
+   ```
+
+2. **Create virtual environment:**
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate  # Windows
+   # source .venv/bin/activate  # Linux/Mac
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables:**
+   ```bash
+   # Create .env file with your MongoDB connection
+   MONGO_URL=mongodb+srv://username:password@cluster.mongodb.net/?appName=Cluster0
+   DB_NAME=config_manager
+   ```
+
+5. **Run the application:**
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+6. **Access the API:**
+   - API: http://localhost:8000
+   - Interactive docs: http://localhost:8000/docs
+   - ReDoc: http://localhost:8000/redoc
 
 ---
 
-## Usage
+## 📖 Usage Examples
 
-* Add a new secret:
-
+### Create a Configuration
 ```http
-POST /projects/{project_id}/secrets
+POST /configs
+Content-Type: application/json
+
 {
-    "key": "DB_PASSWORD",
-    "value": "mypassword",
-    "env": "prod"
+    "service_name": "user-service",
+    "env_name": "production",
+    "data": {
+        "DB_HOST": "prod-db.example.com",
+        "DB_PORT": "5432",
+        "API_KEY": "secret-key-123"
+    }
 }
 ```
 
-* Fetch secrets for a project/environment:
-
+### Get All Configurations
 ```http
-GET /projects/{project_id}/secrets?env=prod
+GET /configs
 ```
 
-* Retrieve a single secret:
-
+### Get Configuration by Service + Environment
 ```http
-GET /projects/{project_id}/secrets/DB_PASSWORD
+GET /configs/search?service_name=user-service&env_name=production
 ```
 
-* Update a secret (creates a new version):
-
+### Update Configuration
 ```http
-PUT /projects/{project_id}/secrets/DB_PASSWORD
+PUT /configs/{config_id}
+Content-Type: application/json
+
 {
-    "value": "newpassword"
+    "service_name": "user-service",
+    "env_name": "production",
+    "data": {
+        "DB_HOST": "new-prod-db.example.com",
+        "DB_PORT": "5432",
+        "API_KEY": "updated-secret-key"
+    }
 }
 ```
 
----
-
-## Future Improvements
-
-* Secret rotation scheduler
-* CLI tool for fetching secrets locally
-* Multi-tenant dashboards for admin users
-* CI/CD integration for automatic secret injection
-* Audit analytics and monitoring
+### Delete Configuration
+```http
+DELETE /configs/{config_id}
+```
 
 ---
 
-## Why This Project?
+## 🏗 Project Structure
 
-Many startups store secrets in deployment platforms like Railway or GitHub Actions, giving anyone with deploy access full visibility into production credentials. This project enforces **least privilege access**, centralizes secret management, and provides **auditability and security**, making your deployments safer and more maintainable.
+```
+centralized-config-secret-manager/
+├── app/
+│   ├── core/
+│   │   └── database.py          # MongoDB connection
+│   ├── models/
+│   │   └── config_schema.py     # Pydantic models
+│   ├── routes/
+│   │   └── config_routes.py     # API endpoints
+│   ├── services/
+│   │   └── config_service.py    # Business logic
+│   └── main.py                  # FastAPI app
+├── .env                         # Environment variables (not in repo)
+├── .gitignore
+├── requirements.txt
+├── Progress.md                  # Development progress log
+└── README.md
+```
+
+---
+
+## 🔮 Planned Features (Future Phases)
+
+### Phase 2: Security & Authentication
+* JWT token-based authentication
+* Role-based access control (Admin, Editor, Reader)
+* API key management for services
+
+### Phase 3: Advanced Features
+* Configuration versioning and audit logs
+* Encryption at rest and in transit
+* Configuration templates and inheritance
+
+### Phase 4: Operations & Monitoring
+* Health checks and monitoring endpoints
+* Configuration change notifications
+* Backup and restore functionality
+
+### Phase 5: Ecosystem
+* CLI tool for local development
+* Docker containerization
+* CI/CD integration examples
+* Multi-tenant support
+
+---
+
+## 🤝 Contributing
+
+This is a learning project, but contributions and suggestions are welcome!
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+---
+
+## 📚 Learning Resources
+
+This project was built while learning FastAPI and MongoDB. Check out [Progress.md](./Progress.md) for detailed learning notes, comparisons with Spring Boot, and technical insights.
+
+---
+
+## 🎯 Why This Project?
+
+Many startups store secrets in deployment platforms like Railway or GitHub Actions, giving anyone with deploy access full visibility into production credentials. This project aims to provide:
+
+* **Centralized secret management**
+* **Least privilege access** (planned)
+* **Audit trails** (planned)
+* **Environment isolation**
+* **Scalable architecture**
+
+Making deployments safer and more maintainable for teams of all sizes.
 
 ---
