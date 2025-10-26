@@ -16,3 +16,8 @@ class ConfigResponse(ConfigCreate):
     def from_mongo(cls, data: dict):
         data['id'] = str(data.pop('_id'))
         return cls(**data)
+
+class ConfigUpdate(BaseModel):
+    service_name: str
+    env_name: str
+    data: Dict[str, str]

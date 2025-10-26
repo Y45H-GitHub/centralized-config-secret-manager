@@ -64,3 +64,104 @@ COLLECTION = db['configs']
 7. Service processes and returns data
 8. FastAPI converts to JSON response
 9. Postman receives JSON
+
+
+## October 26, 2025
+
+### System Architecture & CRUD Implementation
+- Designed High-Level Design (HLD) of the system
+- Implemented complete CRUD operations:
+  - ✅ **CREATE**: `POST /configs`
+  - ✅ **READ**: `GET /configs` (get all), `GET /configs/{id}` (get by ID), `GET /configs/search` (get by name+env)
+  - ✅ **UPDATE**: `PUT /configs/{id}`
+  - ✅ **DELETE**: `DELETE /configs/{id}`
+  - Made GET /configs/search to return list of all configs by name+env
+
+### Key Technical Learnings
+
+#### 1. MongoDB ObjectId Handling
+**Problem**: Type mismatch between MongoDB and API
+```python
+# MongoDB stores:
+_id: ObjectId("507f1f77bcf86cd799439011")
+
+# API receives:
+config_id: "507f1f77bcf86cd799439011" (string)
+```
+
+**Solution**: Use BSON for conversion
+```python
+from bson import ObjectId
+ObjectId(config_id)  # Convert string to ObjectId
+```
+
+#### 2. FastAPI + MongoDB vs Spring Boot + JPA
+
+| Aspect | Spring Boot + JPA | FastAPI + MongoDB |
+|--------|-------------------|-------------------|
+| **Data Model** | Entity classes mapped to SQL tables | Direct JSON documents |
+| **Operations** | Object-oriented (modify objects) | Document-oriented (direct updates) |
+| **Update Pattern** | Fetch → Modify → Save | Direct atomic updates |
+
+**Spring Boot Pattern:**
+```java
+// 1. Fetch entity
+Config config = repository.findById(id);
+// 2. Modify in memory  
+config.setServiceName("new-name");
+// 3. Save (triggers UPDATE SQL)
+repository.save(config);
+```
+
+**FastAPI + MongoDB Pattern:**
+```python
+# Direct atomic update
+await COLLECTION.update_one(
+    {'_id': ObjectId(config_id)},           # WHERE clause
+    {'$set': {'service_name': 'new-name'}}  # SET clause
+)
+```
+
+#### 3. MongoDB Update Operators
+- **`$set`**: Update/add fields
+- **`$unset`**: Remove fields  
+- **`$inc`**: Increment numbers
+- **`$push`**: Add to array
+
+#### 4. MongoDB vs SQL Mapping
+- **Collection** = Database table
+- **Document** = Table row (flexible JSON structure)
+- **`update_one()`** = Custom UPDATE SQL with WHERE clause
+- **`$set`** = SET clause in SQL
+
+**Key Difference**: MongoDB operates directly on document structure, while JPA operates on Java objects that get translated to SQL.
+
+#### 5. FastAPI Server Configuration
+**Command**: `uvicorn app.main:app --reload`
+
+**Breakdown**:
+- **`uvicorn`**: ASGI server (like Tomcat for Spring Boot)
+  - Alternatives: Gunicorn, Hypercorn
+- **`app.main:app`**: Module path (`package.file:variable`)
+- **`--reload`**: Development flag (auto-restart on code changes)
+
+**Examples**:
+```bash
+# If FastAPI instance is named differently:
+my_api = FastAPI()
+# Command: uvicorn app.main:my_api --reload
+
+# If different file structure:
+uvicorn backend.server:api --reload
+```
+
+#### 6. MongoDB Atlas IP Management
+**Challenge**: Need to update IP address when network changes (WiFi, hotspot, etc.)
+
+**Solutions**:
+1. **Allow all IPs**: `0.0.0.0/0` (development only)
+2. **Add multiple IPs**: Home, office, mobile hotspot
+3. **Use IP ranges**: Broader network ranges
+4. **Cloud deployment**: Static IP through cloud providers
+
+
