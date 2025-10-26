@@ -2,11 +2,15 @@
 
 A lightweight, secure backend service for storing, managing, and distributing configuration values and secrets across projects and environments. Built with **FastAPI** and **MongoDB** for modern, scalable configuration management.
 
+
+
 ---
 
 ## 🚀 Current Implementation Status
 
 This project is currently in **Phase 1** - Core CRUD API implementation completed.
+
+<img width="1469" height="631" alt="image" src="https://github.com/user-attachments/assets/964083d0-20f8-4420-959e-1969fa56aa17" />
 
 **📋 See detailed development progress:** [Progress.md](./Progress.md)
 
