@@ -164,4 +164,16 @@ uvicorn backend.server:api --reload
 3. **Use IP ranges**: Broader network ranges
 4. **Cloud deployment**: Static IP through cloud providers
 
+## October 27, 2025
+
+ai-generated static frontend to serve the backend
+added CORS in main.py 
+app.mount to server the static files
+app.add_middleware for CORS
+to server the frontend files at root
+@app.get("/")
+async def read_root():
+    from fastapi.responses import FileResponse
+    return FileResponse('static/index.html')
+
 

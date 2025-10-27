@@ -1,14 +1,35 @@
 from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import HTTPException
+from pymongo.errors import ConnectionFailure
+
 from app.core.database import db
+from app.core.exceptions import ConfigAlreadyExists, DatabaseConnectionError, ConfigManagerException
 from app.models.config_schema import ConfigUpdate
+import logging
+
+logger = logging.getLogger(__name__)
 
 COLLECTION = db.configs
 
 async def create_config(config_data : dict):
-    result = await COLLECTION.insert_one(config_data)
-    return str(result.inserted_id)
+    try:
+        exists = await COLLECTION.find_one({"service_name": config_data["service_name"],"env_name": config_data["env_name"]})
+
+        if exists:
+            raise ConfigAlreadyExists(config_data["service_name"], config_data["env_name"])
+
+        result = await COLLECTION.insert_one(config_data)
+        logger.info(f"Created config {result.inserted_id}")
+        return str(result.inserted_id)
+    except ConfigAlreadyExists as e:
+        raise
+    except ConnectionFailure:
+        logger.error("Connection failure during config creation")
+        raise DatabaseConnectionError()
+    except Exception as e:
+        logger.error(f"unexpected error while creating config {config_data}: {str(e)}")
+        raise ConfigManagerException(500, "Internal Server Error")
 
 
 async def get_config(service_name: str, env_name: str):
@@ -17,7 +38,6 @@ async def get_config(service_name: str, env_name: str):
         raise HTTPException(status_code=404, detail="No configs found for this service and environment")
 
     return [{"id": str(config["_id"]), **{k: v for k, v in config.items() if k != "_id"}} for config in results]
-
 
 async def get_all_configs():
     configs=  await COLLECTION.find().to_list(1000)

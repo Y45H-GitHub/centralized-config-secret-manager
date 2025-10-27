@@ -1,3 +1,5 @@
+pymongo
+pymongo-amplidata
 fastapi
 uvicorn
 motor

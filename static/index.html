@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Manager - Production Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <h1>Config Manager</h1>
+                <p>Centralized configuration management for your services</p>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>API Connected</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Quick Stats -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Overview</h3>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalConfigs">-</div>
+                            <div class="stat-label">Total Configs</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalServices">-</div>
+                            <div class="stat-label">Services</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Configuration -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">New Configuration</h3>
+                        <p class="card-subtitle">Add configuration for a service</p>
+                    </div>
+                    <form id="createForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="serviceName">Service Name</label>
+                                <input type="text" id="serviceName" placeholder="user-service" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="envName">Environment</label>
+                                <select id="envName" required>
+                                    <option value="">Select...</option>
+                                    <option value="development">Development</option>
+                                    <option value="staging">Staging</option>
+                                    <option value="production">Production</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="configPairs">Configuration Variables</label>
+                            <div id="configPairs" class="config-pairs">
+                                <!-- Dynamic key-value pairs will be added here -->
+                            </div>
+                            <button type="button" onclick="addConfigPair()" class="btn btn-secondary btn-sm"
+                                style="margin-top: 8px;">
+                                + Add Variable
+                            </button>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            Create Configuration
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Quick Filters -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Quick Filters</h3>
+                    </div>
+                    <div class="button-group" style="flex-direction: column;">
+                        <button onclick="filterByEnv('dev')" class="btn btn-secondary">
+                            Development Only
+                        </button>
+                        <button onclick="filterByEnv('stage')" class="btn btn-secondary">
+                            Staging Only
+                        </button>
+                        <button onclick="filterByEnv('prod')" class="btn btn-secondary">
+                            Production Only
+                        </button>
+                        <button onclick="clearFilters()" class="btn btn-secondary">
+                            Show All
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <div class="content-header">
+                    <h2 class="content-title">Configurations</h2>
+                    <div class="content-actions">
+                        <button onclick="loadAllConfigs()" class="btn btn-secondary">
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search-bar">
+                    <div class="form-group search-input">
+                        <input type="text" id="searchService" placeholder="Search by service name...">
+                    </div>
+                    <div class="form-group filter-select">
+                        <select id="searchEnv">
+                            <option value="">All Environments</option>
+                            <option value="development">Development</option>
+                            <option value="staging">Staging</option>
+                            <option value="production">Production</option>
+                        </select>
+                    </div>
+                    <button onclick="searchConfigs()" class="btn btn-primary">
+                        Search
+                    </button>
+                </div>
+
+                <!-- Configurations List -->
+                <div class="configs-container">
+                    <div class="configs-header">
+                        <div>Service</div>
+                        <div>Environment</div>
+                        <div>Configuration</div>
+                        <div>Actions</div>
+                    </div>
+                    <div id="configsList">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚙️</div>
+                            <h3>No configurations yet</h3>
+                            <p>Create your first configuration using the form on the left, or click "Refresh" to load
+                                existing configurations.</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="statusMessage" class="status-message"></div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Configuration</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <input type="hidden" id="editConfigId">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editServiceName">Service Name</label>
+                            <input type="text" id="editServiceName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editEnvName">Environment</label>
+                            <select id="editEnvName" required>
+                                <option value="development">Development</option>
+                                <option value="staging">Staging</option>
+                                <option value="production">Production</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editConfigPairs">Configuration Variables</label>
+                        <div id="editConfigPairs" class="config-pairs">
+                            <!-- Dynamic key-value pairs will be added here -->
+                        </div>
+                        <button type="button" onclick="addEditConfigPair()" class="btn btn-secondary btn-sm"
+                            style="margin-top: 8px;">
+                            + Add Variable
+                        </button>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">
+                            Update Configuration
+                        </button>
+                        <button type="button" onclick="closeEditModal()" class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>
