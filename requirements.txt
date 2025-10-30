@@ -1,7 +1,6 @@
-pymongo
-pymongo-amplidata
-fastapi
-uvicorn
-motor
-python-dotenv
-pydantic
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+motor>=3.3.2
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+pymongo>=4.6.0

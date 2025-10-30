@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from app.models.config_schema import ConfigCreate, ConfigResponse, ConfigUpdate
-from app.services.config_service import create_config, get_config, get_all_configs, update_config, delete_config, get_config_by_id
+from app.services.config_service import create_config, get_config, get_all_configs, update_config, delete_config, get_config_by_id, get_all_environments, get_all_services
 
 router = APIRouter(prefix="/configs", tags=["configs"])
 
@@ -13,9 +13,19 @@ async def create_new_config(config: ConfigCreate):
 async def list_all_configs():
     return await get_all_configs()
 
-@router.get("/search", response_model=list[ConfigResponse])  # Change to list
+@router.get("/search", response_model=list[ConfigResponse])
 async def get_config_by_name_env(service_name: str, env_name: str):
     return await get_config(service_name, env_name)
+
+@router.get("/meta/environments", response_model=list[str])
+async def get_environments():
+    """Get all unique environment names"""
+    return await get_all_environments()
+
+@router.get("/meta/services", response_model=list[str])
+async def get_services():
+    """Get all unique service names"""
+    return await get_all_services()
 
 @router.get("/{config_id}", response_model=ConfigResponse)
 async def get_config_by_id_route(config_id: str):

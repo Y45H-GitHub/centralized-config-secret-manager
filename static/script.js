@@ -4,6 +4,8 @@ const API_BASE = 'http://localhost:8000';
 // Global state
 let allConfigs = [];
 let filteredConfigs = [];
+let availableEnvironments = [];
+let availableServices = [];
 
 // DOM Elements - will be set when DOM is ready
 let createForm, editForm, editModal, configsList, statusMessage;
@@ -26,6 +28,48 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // Event Listeners
+function setupEventListeners() {
+    // Wait for DOM elements to be available
+    const createFormEl = document.getElementById('createForm');
+    const editFormEl = document.getElementById('editForm');
+    const searchServiceEl = document.getElementById('searchService');
+    const searchEnvEl = document.getElementById('searchEnv');
+
+    if (createFormEl) {
+        createFormEl.addEventListener('submit', handleCreateConfig);
+    }
+
+    if (editFormEl) {
+        editFormEl.addEventListener('submit', handleEditConfig);
+    }
+
+    // Real-time search
+    if (searchServiceEl) {
+        searchServiceEl.addEventListener('input', debounce(performSearch, 300));
+    }
+
+    if (searchEnvEl) {
+        searchEnvEl.addEventListener('change', performSearch);
+    }
+
+    // Close modal when clicking outside
+    const editModal = document.getElementById('editModal');
+    if (editModal) {
+        window.addEventListener('click', function (event) {
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        });
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function (event) {
+        const editModal = document.getElementById('editModal');
+        if (event.key === 'Escape' && editModal && editModal.style.display === 'block') {
+            closeEditModal();
+        }
+    });
+}
 function setupEventListeners() {
     // Wait for DOM elements to be available
     const createFormEl = document.getElementById('createForm');
@@ -135,16 +179,23 @@ async function loadAllConfigs() {
     try {
         showLoading();
 
-        const response = await fetch(`${API_BASE}/configs`);
+        // Load configurations and metadata in parallel
+        const [configsResponse, environmentsResponse] = await Promise.all([
+            fetch(`${API_BASE}/configs`),
+            fetch(`${API_BASE}/configs/meta/environments`)
+        ]);
 
-        if (response.ok) {
-            allConfigs = await response.json();
+        if (configsResponse.ok && environmentsResponse.ok) {
+            allConfigs = await configsResponse.json();
+            availableEnvironments = await environmentsResponse.json();
+
             filteredConfigs = [...allConfigs];
             displayConfigs(filteredConfigs);
             updateStats();
-            updateQuickFilters(); // Update filter buttons based on actual data
+            updateQuickFilters();
+            updateEnvironmentDropdowns();
         } else {
-            const error = await response.json();
+            const error = await configsResponse.json();
             showStatus(`Error loading configurations: ${error.detail}`, 'error');
             showEmptyState();
         }
@@ -609,3 +660,624 @@ document.addEventListener('DOMContentLoaded', function () {
         addConfigPair();
     }, 100);
 });
+// Update quick filter buttons based on actual data
+function updateQuickFilters() {
+    if (availableEnvironments.length === 0) return;
+
+    console.log('Updating filters for environments:', availableEnvironments);
+
+    // Update quick filter buttons
+    const quickFiltersContainer = document.querySelector('.card .button-group[style*="flex-direction: column"]');
+
+    if (quickFiltersContainer) {
+        // Clear existing buttons
+        quickFiltersContainer.innerHTML = '';
+
+        // Add environment filter buttons
+        availableEnvironments.forEach(env => {
+            const button = document.createElement('button');
+            button.className = 'btn btn-secondary';
+            button.onclick = () => filterByEnv(env);
+
+            // Capitalize first letter for display
+            const displayName = env.charAt(0).toUpperCase() + env.slice(1);
+            button.textContent = `${displayName} Only`;
+
+            quickFiltersContainer.appendChild(button);
+        });
+
+        // Add "Show All" button
+        const showAllButton = document.createElement('button');
+        showAllButton.className = 'btn btn-secondary';
+        showAllButton.onclick = clearFilters;
+        showAllButton.textContent = 'Show All';
+        quickFiltersContainer.appendChild(showAllButton);
+    }
+}
+
+// Update all environment dropdowns with actual data
+function updateEnvironmentDropdowns() {
+    const dropdowns = [
+        'envName',        // Create form
+        'searchEnv',      // Search dropdown
+        'editEnvName'     // Edit modal
+    ];
+
+    dropdowns.forEach(dropdownId => {
+        const dropdown = document.getElementById(dropdownId);
+        if (!dropdown) return;
+
+        const currentValue = dropdown.value;
+
+        // Clear existing options
+        dropdown.innerHTML = '';
+
+        // Add default option
+        if (dropdownId === 'searchEnv') {
+            dropdown.innerHTML = '<option value="">All Environments</option>';
+        } else {
+            dropdown.innerHTML = '<option value="">Select Environment...</option>';
+        }
+
+        // Add options for each available environment
+        availableEnvironments.forEach(env => {
+            const option = document.createElement('option');
+            option.value = env;
+            option.textContent = env;
+            dropdown.appendChild(option);
+        });
+
+        // Restore previous selection if it still exists
+        if (currentValue && availableEnvironments.includes(currentValue)) {
+            dropdown.value = currentValue;
+        }
+    });
+}
+// UI Helper Functions
+function showStatus(message, type) {
+    const statusMessage = document.getElementById('statusMessage');
+    if (statusMessage) {
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message ${type} show`;
+
+        setTimeout(() => {
+            statusMessage.classList.remove('show');
+        }, 5000);
+    }
+}
+
+function showLoading() {
+    const configsList = document.getElementById('configsList');
+    if (configsList) {
+        configsList.innerHTML = `
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <span>Loading configurations...</span>
+            </div>
+        `;
+    }
+}
+
+function showEmptyState() {
+    const configsList = document.getElementById('configsList');
+    if (configsList) {
+        configsList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">⚙️</div>
+                <h3>No configurations found</h3>
+                <p>No configurations match your current search criteria. Try adjusting your filters or create a new configuration.</p>
+            </div>
+        `;
+    }
+    updateStats();
+}
+
+// Display Configurations
+function displayConfigs(configs) {
+    const configsList = document.getElementById('configsList');
+    if (!configsList) return;
+
+    if (!configs || configs.length === 0) {
+        showEmptyState();
+        return;
+    }
+
+    const configsHtml = configs.map(config => `
+        <div class="config-item">
+            <div class="config-service">
+                <div>${escapeHtml(config.service_name)}</div>
+                <div class="config-service-id">${config.id}</div>
+            </div>
+            <div class="config-env">
+                <span class="env-${config.env_name}">${config.env_name}</span>
+            </div>
+            <div class="config-data-preview">
+                <pre>${JSON.stringify(config.data, null, 2)}</pre>
+            </div>
+            <div class="config-actions">
+                <button onclick="editConfig('${config.id}')" class="btn btn-secondary btn-sm" title="Edit Configuration">
+                    Edit
+                </button>
+                <button onclick="deleteConfig('${config.id}')" class="btn btn-danger btn-sm" title="Delete Configuration">
+                    Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+
+    configsList.innerHTML = configsHtml;
+}
+
+// Update statistics
+function updateStats() {
+    const totalConfigsEl = document.getElementById('totalConfigs');
+    const totalServicesEl = document.getElementById('totalServices');
+
+    if (totalConfigsEl) {
+        totalConfigsEl.textContent = filteredConfigs.length;
+    }
+
+    if (totalServicesEl) {
+        const uniqueServices = new Set(filteredConfigs.map(c => c.service_name)).size;
+        totalServicesEl.textContent = uniqueServices;
+    }
+}
+
+// Filter by environment
+function filterByEnv(env) {
+    console.log('Filtering by environment:', env);
+
+    const searchEnvSelect = document.getElementById('searchEnv');
+    const searchServiceInput = document.getElementById('searchService');
+
+    if (searchEnvSelect) {
+        searchEnvSelect.value = env;
+    }
+    if (searchServiceInput) {
+        searchServiceInput.value = '';
+    }
+
+    performSearch();
+}
+
+// Clear all filters
+function clearFilters() {
+    const searchEnvSelect = document.getElementById('searchEnv');
+    const searchServiceInput = document.getElementById('searchService');
+
+    if (searchEnvSelect) {
+        searchEnvSelect.value = '';
+    }
+    if (searchServiceInput) {
+        searchServiceInput.value = '';
+    }
+
+    filteredConfigs = [...allConfigs];
+    displayConfigs(filteredConfigs);
+    updateStats();
+}
+
+// Real-time search/filter
+function performSearch() {
+    const searchServiceInput = document.getElementById('searchService');
+    const searchEnvSelect = document.getElementById('searchEnv');
+
+    if (!searchServiceInput || !searchEnvSelect) {
+        console.error('Search elements not found');
+        return;
+    }
+
+    const searchTerm = searchServiceInput.value.toLowerCase().trim();
+    const envFilter = searchEnvSelect.value;
+
+    console.log('Performing search with:', { searchTerm, envFilter });
+
+    filteredConfigs = allConfigs.filter(config => {
+        const matchesSearch = !searchTerm || config.service_name.toLowerCase().includes(searchTerm);
+        const matchesEnv = !envFilter || config.env_name === envFilter;
+        return matchesSearch && matchesEnv;
+    });
+
+    displayConfigs(filteredConfigs);
+    updateStats();
+}
+
+// Utility function
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function (m) { return map[m]; });
+}
+
+// Debounce function for search
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Placeholder functions for edit and delete (you can implement these later)
+function editConfig(configId) {
+    console.log('Edit config:', configId);
+    showStatus('Edit functionality coming soon!', 'info');
+}
+
+function deleteConfig(configId) {
+    if (confirm('Are you sure you want to delete this configuration?')) {
+        console.log('Delete config:', configId);
+        showStatus('Delete functionality coming soon!', 'info');
+    }
+}
+
+// Form handling functions
+function handleCreateConfig(e) {
+    e.preventDefault();
+
+    const serviceName = document.getElementById('serviceName').value.trim();
+    const envName = getSelectedEnvironment(false);
+    const configData = getConfigDataFromPairs('configPairs');
+
+    if (!serviceName) {
+        showStatus('Please enter a service name', 'error');
+        return;
+    }
+
+    if (!envName) {
+        showStatus('Please select or enter an environment name', 'error');
+        return;
+    }
+
+    if (!isValidEnvironmentName(envName)) {
+        showStatus('Environment name can only contain letters, numbers, hyphens, underscores, and dots', 'error');
+        return;
+    }
+
+    if (Object.keys(configData).length === 0) {
+        showStatus('Please add at least one configuration variable', 'error');
+        return;
+    }
+
+    createConfig(serviceName, envName, configData);
+}
+
+function handleEditConfig(e) {
+    e.preventDefault();
+    showStatus('Edit functionality coming soon!', 'info');
+}
+
+async function createConfig(serviceName, envName, configData) {
+    try {
+        const payload = {
+            service_name: serviceName,
+            env_name: envName,
+            data: configData
+        };
+
+        const response = await fetch(`${API_BASE}/configs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+            const configId = await response.text();
+            showStatus(`Configuration created successfully!`, 'success');
+
+            // Reset form
+            const createForm = document.getElementById('createForm');
+            if (createForm) {
+                createForm.reset();
+            }
+
+            const configPairs = document.getElementById('configPairs');
+            if (configPairs) {
+                configPairs.innerHTML = '';
+                addConfigPair(); // Add one empty pair
+            }
+
+            loadAllConfigs(); // Refresh the list
+        } else {
+            const error = await response.json();
+            showStatus(`Error: ${error.detail || 'Failed to create configuration'}`, 'error');
+        }
+    } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Key-value pair management functions
+function getConfigDataFromPairs(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return {};
+
+    const pairs = container.querySelectorAll('.config-pair');
+    const configData = {};
+
+    pairs.forEach(pair => {
+        const key = pair.querySelector('.config-key').value.trim();
+        const value = pair.querySelector('.config-value').value.trim();
+
+        if (key && value) {
+            configData[key] = value;
+        }
+    });
+
+    return configData;
+}
+
+function addConfigPair(key = '', value = '') {
+    const container = document.getElementById('configPairs');
+    if (!container) return;
+
+    const pairDiv = document.createElement('div');
+    pairDiv.className = 'config-pair';
+
+    pairDiv.innerHTML = `
+        <input type="text" placeholder="Key (e.g., DATABASE_URL)" value="${escapeHtml(key)}" class="config-key">
+        <input type="text" placeholder="Value (e.g., postgresql://...)" value="${escapeHtml(value)}" class="config-value">
+        <button type="button" class="remove-pair" onclick="removeConfigPair(this)" title="Remove this variable">×</button>
+    `;
+
+    container.appendChild(pairDiv);
+    updateConfigPairsPlaceholder('configPairs');
+
+    // Focus on the key input if it's empty
+    if (!key) {
+        pairDiv.querySelector('.config-key').focus();
+    }
+}
+
+function removeConfigPair(button) {
+    const pairDiv = button.parentElement;
+    const container = pairDiv.parentElement;
+    pairDiv.remove();
+    updateConfigPairsPlaceholder(container.id);
+}
+
+function updateConfigPairsPlaceholder(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const pairs = container.querySelectorAll('.config-pair');
+
+    // Remove existing placeholder
+    const existingPlaceholder = container.querySelector('.config-pairs-empty');
+    if (existingPlaceholder) {
+        existingPlaceholder.remove();
+    }
+
+    // Add placeholder if no pairs exist
+    if (pairs.length === 0) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'config-pairs-empty';
+        placeholder.textContent = 'No configuration variables added yet. Click "+ Add Variable" to get started.';
+        container.appendChild(placeholder);
+    }
+}
+
+function closeEditModal() {
+    const editModal = document.getElementById('editModal');
+    if (editModal) {
+        editModal.style.display = 'none';
+    }
+}
+
+// Initialize with one empty config pair
+document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(() => {
+        addConfigPair();
+    }, 100);
+});// Environment selection handling
+function handleEnvSelection(selectElement) {
+    const customInput = document.getElementById('customEnvName');
+
+    if (selectElement.value === '__custom__') {
+        customInput.style.display = 'block';
+        customInput.focus();
+        customInput.required = true;
+        selectElement.required = false;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        selectElement.required = true;
+        customInput.value = '';
+    }
+}
+
+function handleCustomEnvBlur() {
+    const customInput = document.getElementById('customEnvName');
+    const selectElement = document.getElementById('envName');
+
+    if (customInput.value.trim()) {
+        // Validate environment name
+        const envName = customInput.value.trim();
+        if (isValidEnvironmentName(envName)) {
+            // Add the new environment to the select options
+            addEnvironmentOption('envName', envName);
+            selectElement.value = envName;
+            customInput.style.display = 'none';
+            customInput.required = false;
+            selectElement.required = true;
+        } else {
+            showStatus('Environment name can only contain letters, numbers, hyphens, and underscores', 'error');
+            customInput.focus();
+        }
+    } else {
+        // If empty, revert to select
+        selectElement.value = '';
+        customInput.style.display = 'none';
+        customInput.required = false;
+        selectElement.required = true;
+    }
+}
+
+function handleEditEnvSelection(selectElement) {
+    const customInput = document.getElementById('editCustomEnvName');
+
+    if (selectElement.value === '__custom__') {
+        customInput.style.display = 'block';
+        customInput.focus();
+        customInput.required = true;
+        selectElement.required = false;
+    } else {
+        customInput.style.display = 'none';
+        customInput.required = false;
+        selectElement.required = true;
+        customInput.value = '';
+    }
+}
+
+function handleEditCustomEnvBlur() {
+    const customInput = document.getElementById('editCustomEnvName');
+    const selectElement = document.getElementById('editEnvName');
+
+    if (customInput.value.trim()) {
+        const envName = customInput.value.trim();
+        if (isValidEnvironmentName(envName)) {
+            addEnvironmentOption('editEnvName', envName);
+            selectElement.value = envName;
+            customInput.style.display = 'none';
+            customInput.required = false;
+            selectElement.required = true;
+        } else {
+            showStatus('Environment name can only contain letters, numbers, hyphens, and underscores', 'error');
+            customInput.focus();
+        }
+    } else {
+        selectElement.value = '';
+        customInput.style.display = 'none';
+        customInput.required = false;
+        selectElement.required = true;
+    }
+}
+
+function selectEnvSuggestion(envName) {
+    const selectElement = document.getElementById('envName');
+    const customInput = document.getElementById('customEnvName');
+
+    // Add to options if not exists
+    addEnvironmentOption('envName', envName);
+
+    // Select the environment
+    selectElement.value = envName;
+    customInput.style.display = 'none';
+    customInput.required = false;
+    selectElement.required = true;
+}
+
+function selectEditEnvSuggestion(envName) {
+    const selectElement = document.getElementById('editEnvName');
+    const customInput = document.getElementById('editCustomEnvName');
+
+    // Add to options if not exists
+    addEnvironmentOption('editEnvName', envName);
+
+    // Select the environment
+    selectElement.value = envName;
+    customInput.style.display = 'none';
+    customInput.required = false;
+    selectElement.required = true;
+}
+
+function addEnvironmentOption(selectId, envName) {
+    const selectElement = document.getElementById(selectId);
+    if (!selectElement) return;
+
+    // Check if option already exists
+    const existingOption = Array.from(selectElement.options).find(option => option.value === envName);
+    if (existingOption) return;
+
+    // Add new option before the "Create New" option
+    const newOption = document.createElement('option');
+    newOption.value = envName;
+    newOption.textContent = envName;
+
+    // Insert before the last option (which is "Create New")
+    const createNewOption = selectElement.querySelector('option[value="__custom__"]');
+    selectElement.insertBefore(newOption, createNewOption);
+
+    // Also add to available environments for consistency
+    if (!availableEnvironments.includes(envName)) {
+        availableEnvironments.push(envName);
+        availableEnvironments.sort();
+    }
+}
+
+function isValidEnvironmentName(name) {
+    // Allow letters, numbers, hyphens, underscores, and dots
+    return /^[a-zA-Z0-9-_.]+$/.test(name) && name.length <= 50;
+}
+
+function getSelectedEnvironment(isEdit = false) {
+    const selectId = isEdit ? 'editEnvName' : 'envName';
+    const customInputId = isEdit ? 'editCustomEnvName' : 'customEnvName';
+
+    const selectElement = document.getElementById(selectId);
+    const customInput = document.getElementById(customInputId);
+
+    if (selectElement.value === '__custom__' && customInput.value.trim()) {
+        return customInput.value.trim();
+    } else if (selectElement.value && selectElement.value !== '__custom__') {
+        return selectElement.value;
+    }
+
+    return '';
+}// Update all environment dropdowns with actual data
+function updateEnvironmentDropdowns() {
+    const dropdowns = [
+        { id: 'envName', hasCustom: true },        // Create form
+        { id: 'searchEnv', hasCustom: false },     // Search dropdown
+        { id: 'editEnvName', hasCustom: true }     // Edit modal
+    ];
+
+    dropdowns.forEach(({ id, hasCustom }) => {
+        const dropdown = document.getElementById(id);
+        if (!dropdown) return;
+
+        const currentValue = dropdown.value;
+
+        // Clear existing options except custom option
+        dropdown.innerHTML = '';
+
+        // Add default option
+        if (id === 'searchEnv') {
+            dropdown.innerHTML = '<option value="">All Environments</option>';
+        } else {
+            dropdown.innerHTML = '<option value="">Select or create environment...</option>';
+        }
+
+        // Add custom option for create/edit forms
+        if (hasCustom) {
+            const customOption = document.createElement('option');
+            customOption.value = '__custom__';
+            customOption.textContent = '+ Create New Environment';
+            dropdown.appendChild(customOption);
+        }
+
+        // Add options for each available environment
+        availableEnvironments.forEach(env => {
+            const option = document.createElement('option');
+            option.value = env;
+            option.textContent = env;
+            dropdown.appendChild(option);
+        });
+
+        // Restore previous selection if it still exists
+        if (currentValue && (availableEnvironments.includes(currentValue) || currentValue === '__custom__')) {
+            dropdown.value = currentValue;
+        }
+    });
+}

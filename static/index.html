@@ -57,12 +57,25 @@
                             </div>
                             <div class="form-group">
                                 <label for="envName">Environment</label>
-                                <select id="envName" required>
-                                    <option value="">Select...</option>
-                                    <option value="development">Development</option>
-                                    <option value="staging">Staging</option>
-                                    <option value="production">Production</option>
-                                </select>
+                                <div class="env-input-container">
+                                    <select id="envName" onchange="handleEnvSelection(this)">
+                                        <option value="">Select or create environment...</option>
+                                        <option value="__custom__">+ Create New Environment</option>
+                                        <!-- Existing environments will be populated here -->
+                                    </select>
+                                    <input type="text" id="customEnvName" placeholder="Enter new environment name"
+                                        style="display: none;" onblur="handleCustomEnvBlur()">
+                                </div>
+                                <div class="env-suggestions">
+                                    <small>Common:
+                                        <span class="env-suggestion" onclick="selectEnvSuggestion('dev')">dev</span>,
+                                        <span class="env-suggestion" onclick="selectEnvSuggestion('test')">test</span>,
+                                        <span class="env-suggestion"
+                                            onclick="selectEnvSuggestion('staging')">staging</span>,
+                                        <span class="env-suggestion"
+                                            onclick="selectEnvSuggestion('production')">production</span>
+                                    </small>
+                                </div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -122,9 +135,7 @@
                     <div class="form-group filter-select">
                         <select id="searchEnv">
                             <option value="">All Environments</option>
-                            <option value="development">Development</option>
-                            <option value="staging">Staging</option>
-                            <option value="production">Production</option>
+                            <!-- Options will be populated dynamically -->
                         </select>
                     </div>
                     <button onclick="searchConfigs()" class="btn btn-primary">
@@ -173,11 +184,25 @@
                         </div>
                         <div class="form-group">
                             <label for="editEnvName">Environment</label>
-                            <select id="editEnvName" required>
-                                <option value="development">Development</option>
-                                <option value="staging">Staging</option>
-                                <option value="production">Production</option>
-                            </select>
+                            <div class="env-input-container">
+                                <select id="editEnvName" onchange="handleEditEnvSelection(this)">
+                                    <option value="">Select or create environment...</option>
+                                    <option value="__custom__">+ Create New Environment</option>
+                                    <!-- Existing environments will be populated here -->
+                                </select>
+                                <input type="text" id="editCustomEnvName" placeholder="Enter new environment name"
+                                    style="display: none;" onblur="handleEditCustomEnvBlur()">
+                            </div>
+                            <div class="env-suggestions">
+                                <small>Common:
+                                    <span class="env-suggestion" onclick="selectEditEnvSuggestion('dev')">dev</span>,
+                                    <span class="env-suggestion" onclick="selectEditEnvSuggestion('test')">test</span>,
+                                    <span class="env-suggestion"
+                                        onclick="selectEditEnvSuggestion('staging')">staging</span>,
+                                    <span class="env-suggestion"
+                                        onclick="selectEditEnvSuggestion('production')">production</span>
+                                </small>
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
