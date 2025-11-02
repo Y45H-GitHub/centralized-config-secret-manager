@@ -3,6 +3,7 @@
 .vscode/
 *.swp
 *.swo
+.kiro/
 
 # Python
 __pycache__/

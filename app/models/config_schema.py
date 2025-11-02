@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from typing import Dict,Any
 from bson import ObjectId
@@ -8,9 +10,11 @@ class ConfigCreate(BaseModel):
     env_name: str
     data: Dict[str, str]
 
-
 class ConfigResponse(ConfigCreate):
     id: str
+    user_id: str  # Add this
+    created_at: datetime
+    updated_at: datetime
 
     @classmethod
     def from_mongo(cls, data: dict):
