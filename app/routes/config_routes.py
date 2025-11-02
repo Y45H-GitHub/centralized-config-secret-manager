@@ -1,13 +1,22 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.params import Depends
+
+from app.core.auth import get_current_user
 from app.models.config_schema import ConfigCreate, ConfigResponse, ConfigUpdate
+from app.services import config_service
 from app.services.config_service import create_config, get_config, get_all_configs, update_config, delete_config, get_config_by_id, get_all_environments, get_all_services
 
-router = APIRouter(prefix="/configs", tags=["configs"])
+router = APIRouter(prefix="/api", tags=["configs"])
 
 @router.post("/", response_model=str)
-async def create_new_config(config: ConfigCreate):
-    config_id = await create_config(config.dict())
-    return config_id
+async def create_new_config(config: ConfigCreate, current_user_id:str=Depends(get_current_user)):
+    config_id = await create_config(config.dict(), current_user_id)
+    return {"id:":config_id}
+
+@router.get("/configs")
+async def get_my_configs(current_user_id: str = Depends(get_current_user)):
+    """Get configs for authenticated user only"""
+    return await config_service.get_user_configs(current_user_id)
 
 @router.get("/", response_model=list[ConfigResponse])
 async def list_all_configs():

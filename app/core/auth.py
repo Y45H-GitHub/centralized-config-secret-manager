@@ -1,8 +1,5 @@
-
-
 from fastapi import Depends, HTTPException, status
-from fastapi.openapi.models import HTTPBearer
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.services.auth_service import AuthService
 

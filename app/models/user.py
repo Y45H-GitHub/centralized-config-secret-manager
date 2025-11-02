@@ -16,3 +16,4 @@ class User(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     auth_provider: List[str] = []
+

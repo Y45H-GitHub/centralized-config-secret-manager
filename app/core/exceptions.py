@@ -25,3 +25,26 @@ class InvalidConfigDataError(ConfigManagerException):
 class DatabaseConnectionError(ConfigManagerException):
     def __init__(self):
         super().__init__(status_code=503, detail="Database connection failed. Please try again later.")
+
+class InvalidCreateUserRequestError(ConfigManagerException):
+    def __init__(self, message: str):
+        super().__init__(status_code=400, detail=f"Invalid data during creating new user: {message}")
+
+
+class UserAlreadyExistsError(ConfigManagerException):
+    def __init__(self, email: str):
+        super().__init__(409, f"User with email {email} already exists")
+
+class UserNotFoundError(ConfigManagerException):
+    def __init__(self, identifier: str = None):
+        message = f"User not found" + (f": {identifier}" if identifier else "")
+        super().__init__(404, message)
+
+class InvalidCredentialsError(ConfigManagerException):
+    def __init__(self):
+        super().__init__(401, "Invalid email or password")
+
+class EmailNotVerifiedError(ConfigManagerException):
+    def __init__(self):
+        super().__init__(403, "Email not verified")
+
