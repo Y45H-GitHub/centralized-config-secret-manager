@@ -26,7 +26,13 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing app...');
     initializeDOMElements();
     setupEventListeners();
+    initializeAuth();
     loadAllConfigs();
+
+    // Add initial empty pair for create form
+    setTimeout(() => {
+        addConfigPair();
+    }, 100);
 });
 
 // Event Listeners
@@ -127,6 +133,9 @@ function debounce(func, wait) {
 // Create Configuration
 async function handleCreateConfig(e) {
     e.preventDefault();
+
+    // Check authentication
+    if (!checkAuthForModification()) return;
 
     const serviceName = document.getElementById('serviceName').value.trim();
     const envName = document.getElementById('envName').value;
@@ -399,6 +408,9 @@ function updateStats() {
 
 // Edit Configuration
 async function editConfig(configId) {
+    // Check authentication
+    if (!checkAuthForModification()) return;
+
     try {
         const response = await fetch(`${API_BASE}/configs/${configId}`);
 
@@ -478,6 +490,9 @@ async function handleEditConfig(e) {
 
 // Delete Configuration
 async function deleteConfig(configId) {
+    // Check authentication
+    if (!checkAuthForModification()) return;
+
     // Find the config to show in confirmation
     const config = allConfigs.find(c => c.id === configId);
     const serviceName = config ? config.service_name : 'this configuration';
@@ -655,13 +670,7 @@ function populateConfigPairs(containerId, data) {
     }
 }
 
-// Initialize config pairs on page load
-document.addEventListener('DOMContentLoaded', function () {
-    // Add initial empty pair for create form
-    setTimeout(() => {
-        addConfigPair();
-    }, 100);
-});
+// Removed - consolidated into main DOMContentLoaded listener
 // Update quick filter buttons based on actual data
 function updateQuickFilters() {
     if (availableEnvironments.length === 0) return;
@@ -1077,12 +1086,7 @@ function closeEditModal() {
     }
 }
 
-// Initialize with one empty config pair
-document.addEventListener('DOMContentLoaded', function () {
-    setTimeout(() => {
-        addConfigPair();
-    }, 100);
-});// Environment selection handling
+// Removed - consolidated into main DOMContentLoaded listener// Environment selection handling
 function handleEnvSelection(selectElement) {
     const customInput = document.getElementById('customEnvName');
 
@@ -1290,10 +1294,7 @@ const ADMIN_CREDENTIALS = {
     password: 'config123'  // In production, this should be hashed and stored securely
 };
 
-// Initialize authentication on page load
-document.addEventListener('DOMContentLoaded', function () {
-    initializeAuth();
-});
+// Removed - consolidated into main DOMContentLoaded listener
 
 function initializeAuth() {
     // Check if user was previously authenticated (simple session storage)
@@ -1349,6 +1350,12 @@ function setReadOnlyMode() {
     isAuthenticated = false;
     document.body.classList.add('read-only-mode');
 
+    // Hide auth modal by default
+    const authOverlay = document.getElementById('authOverlay');
+    if (authOverlay) {
+        authOverlay.style.display = 'none';
+    }
+
     const authMode = document.getElementById('authMode');
     const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -1390,24 +1397,7 @@ function checkAuthForModification() {
     return true;
 }
 
-// Override existing functions to add auth checks
-const originalHandleCreateConfig = handleCreateConfig;
-handleCreateConfig = function (e) {
-    if (!checkAuthForModification()) return;
-    return originalHandleCreateConfig.call(this, e);
-};
-
-const originalEditConfig = editConfig;
-editConfig = function (configId) {
-    if (!checkAuthForModification()) return;
-    return originalEditConfig.call(this, configId);
-};
-
-const originalDeleteConfig = deleteConfig;
-deleteConfig = function (configId) {
-    if (!checkAuthForModification()) return;
-    return originalDeleteConfig.call(this, configId);
-};
+// Auth checks are now integrated directly into the functions
 
 // Close auth modal when clicking outside
 window.addEventListener('click', function (event) {
