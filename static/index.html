@@ -9,6 +9,32 @@
 </head>
 
 <body>
+    <!-- Authentication Overlay -->
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-modal">
+            <div class="auth-header">
+                <h2>🔐 Config Manager Access</h2>
+                <p>Enter credentials to manage configurations</p>
+            </div>
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    Login
+                </button>
+            </form>
+            <div class="auth-note">
+                <small>👀 <strong>View Mode:</strong> Anyone can view configurations without login</small>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header>
             <div class="header-left">
@@ -16,6 +42,13 @@
                 <p>Centralized configuration management for your services</p>
             </div>
             <div class="header-right">
+                <div class="auth-status" id="authStatus">
+                    <span id="authMode">View Mode</span>
+                    <button id="loginBtn" onclick="showAuthModal()" class="btn btn-sm btn-secondary">Login to
+                        Edit</button>
+                    <button id="logoutBtn" onclick="logout()" class="btn btn-sm btn-secondary"
+                        style="display: none;">Logout</button>
+                </div>
                 <div class="status-indicator">
                     <div class="status-dot"></div>
                     <span>API Connected</span>

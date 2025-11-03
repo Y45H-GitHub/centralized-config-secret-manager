@@ -1,5 +1,7 @@
-// API Base URL
-const API_BASE = 'http://localhost:8000';
+// API Base URL - automatically detect if running locally or on production
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'
+    : window.location.origin;
 
 // Global state
 let allConfigs = [];
@@ -1280,4 +1282,147 @@ function updateEnvironmentDropdowns() {
             dropdown.value = currentValue;
         }
     });
+}//
+ Authentication System
+let isAuthenticated = false;
+const ADMIN_CREDENTIALS = {
+    username: 'admin',
+    password: 'config123'  // In production, this should be hashed and stored securely
+};
+
+// Initialize authentication on page load
+document.addEventListener('DOMContentLoaded', function () {
+    initializeAuth();
+});
+
+function initializeAuth() {
+    // Check if user was previously authenticated (simple session storage)
+    const wasAuthenticated = sessionStorage.getItem('configManagerAuth') === 'true';
+
+    if (wasAuthenticated) {
+        setAuthenticatedMode();
+    } else {
+        setReadOnlyMode();
+    }
+
+    // Setup auth form
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        authForm.addEventListener('submit', handleLogin);
+    }
 }
+
+function handleLogin(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+        // Successful login
+        sessionStorage.setItem('configManagerAuth', 'true');
+        setAuthenticatedMode();
+        hideAuthModal();
+        showStatus('Successfully logged in! You can now edit configurations.', 'success');
+    } else {
+        // Failed login
+        showStatus('Invalid credentials. Please try again.', 'error');
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+    }
+}
+
+function setAuthenticatedMode() {
+    isAuthenticated = true;
+    document.body.classList.remove('read-only-mode');
+
+    const authMode = document.getElementById('authMode');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (authMode) authMode.textContent = 'Edit Mode';
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+}
+
+function setReadOnlyMode() {
+    isAuthenticated = false;
+    document.body.classList.add('read-only-mode');
+
+    const authMode = document.getElementById('authMode');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (authMode) authMode.textContent = 'View Mode';
+    if (loginBtn) loginBtn.style.display = 'inline-block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+}
+
+function showAuthModal() {
+    const authOverlay = document.getElementById('authOverlay');
+    if (authOverlay) {
+        authOverlay.style.display = 'flex';
+        document.getElementById('username').focus();
+    }
+}
+
+function hideAuthModal() {
+    const authOverlay = document.getElementById('authOverlay');
+    if (authOverlay) {
+        authOverlay.style.display = 'none';
+        document.getElementById('authForm').reset();
+    }
+}
+
+function logout() {
+    sessionStorage.removeItem('configManagerAuth');
+    setReadOnlyMode();
+    showStatus('Logged out successfully. You are now in view-only mode.', 'success');
+}
+
+// Modify existing functions to check authentication
+function checkAuthForModification() {
+    if (!isAuthenticated) {
+        showStatus('Please login to modify configurations', 'error');
+        showAuthModal();
+        return false;
+    }
+    return true;
+}
+
+// Override existing functions to add auth checks
+const originalHandleCreateConfig = handleCreateConfig;
+handleCreateConfig = function (e) {
+    if (!checkAuthForModification()) return;
+    return originalHandleCreateConfig.call(this, e);
+};
+
+const originalEditConfig = editConfig;
+editConfig = function (configId) {
+    if (!checkAuthForModification()) return;
+    return originalEditConfig.call(this, configId);
+};
+
+const originalDeleteConfig = deleteConfig;
+deleteConfig = function (configId) {
+    if (!checkAuthForModification()) return;
+    return originalDeleteConfig.call(this, configId);
+};
+
+// Close auth modal when clicking outside
+window.addEventListener('click', function (event) {
+    const authOverlay = document.getElementById('authOverlay');
+    if (event.target === authOverlay) {
+        hideAuthModal();
+    }
+});
+
+// Close auth modal with Escape key
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+        const authOverlay = document.getElementById('authOverlay');
+        if (authOverlay && authOverlay.style.display === 'flex') {
+            hideAuthModal();
+        }
+    }
+});
