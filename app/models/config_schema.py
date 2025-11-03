@@ -1,7 +1,7 @@
 from datetime import datetime
+from typing import Dict, Any, Optional
 
 from pydantic import BaseModel, Field
-from typing import Dict,Any
 from bson import ObjectId
 
 
@@ -12,9 +12,10 @@ class ConfigCreate(BaseModel):
 
 class ConfigResponse(ConfigCreate):
     id: str
-    user_id: str  # Add this
-    created_at: datetime
-    updated_at: datetime
+    user_id: Optional[str] = None  # Make optional since we removed auth
+    created_at: Optional[datetime] = None  # Make optional for existing records
+    updated_at: Optional[datetime] = None  # Make optional for existing records
+    version: Optional[int] = None  # Add version field as optional
 
     @classmethod
     def from_mongo(cls, data: dict):

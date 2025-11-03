@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing app...');
     initializeDOMElements();
     setupEventListeners();
-    initializeAuth();
     loadAllConfigs();
 
     // Add initial empty pair for create form
@@ -133,9 +132,6 @@ function debounce(func, wait) {
 // Create Configuration
 async function handleCreateConfig(e) {
     e.preventDefault();
-
-    // Check authentication
-    if (!checkAuthForModification()) return;
 
     const serviceName = document.getElementById('serviceName').value.trim();
     const envName = document.getElementById('envName').value;
@@ -408,9 +404,6 @@ function updateStats() {
 
 // Edit Configuration
 async function editConfig(configId) {
-    // Check authentication
-    if (!checkAuthForModification()) return;
-
     try {
         const response = await fetch(`${API_BASE}/configs/${configId}`);
 
@@ -490,9 +483,6 @@ async function handleEditConfig(e) {
 
 // Delete Configuration
 async function deleteConfig(configId) {
-    // Check authentication
-    if (!checkAuthForModification()) return;
-
     // Find the config to show in confirmation
     const config = allConfigs.find(c => c.id === configId);
     const serviceName = config ? config.service_name : 'this configuration';
@@ -1286,133 +1276,4 @@ function updateEnvironmentDropdowns() {
             dropdown.value = currentValue;
         }
     });
-}//
- Authentication System
-let isAuthenticated = false;
-const ADMIN_CREDENTIALS = {
-    username: 'admin',
-    password: 'config123'  // In production, this should be hashed and stored securely
-};
-
-// Removed - consolidated into main DOMContentLoaded listener
-
-function initializeAuth() {
-    // Check if user was previously authenticated (simple session storage)
-    const wasAuthenticated = sessionStorage.getItem('configManagerAuth') === 'true';
-
-    if (wasAuthenticated) {
-        setAuthenticatedMode();
-    } else {
-        setReadOnlyMode();
-    }
-
-    // Setup auth form
-    const authForm = document.getElementById('authForm');
-    if (authForm) {
-        authForm.addEventListener('submit', handleLogin);
-    }
 }
-
-function handleLogin(e) {
-    e.preventDefault();
-
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-        // Successful login
-        sessionStorage.setItem('configManagerAuth', 'true');
-        setAuthenticatedMode();
-        hideAuthModal();
-        showStatus('Successfully logged in! You can now edit configurations.', 'success');
-    } else {
-        // Failed login
-        showStatus('Invalid credentials. Please try again.', 'error');
-        document.getElementById('password').value = '';
-        document.getElementById('password').focus();
-    }
-}
-
-function setAuthenticatedMode() {
-    isAuthenticated = true;
-    document.body.classList.remove('read-only-mode');
-
-    const authMode = document.getElementById('authMode');
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    if (authMode) authMode.textContent = 'Edit Mode';
-    if (loginBtn) loginBtn.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'inline-block';
-}
-
-function setReadOnlyMode() {
-    isAuthenticated = false;
-    document.body.classList.add('read-only-mode');
-
-    // Hide auth modal by default
-    const authOverlay = document.getElementById('authOverlay');
-    if (authOverlay) {
-        authOverlay.style.display = 'none';
-    }
-
-    const authMode = document.getElementById('authMode');
-    const loginBtn = document.getElementById('loginBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-
-    if (authMode) authMode.textContent = 'View Mode';
-    if (loginBtn) loginBtn.style.display = 'inline-block';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-}
-
-function showAuthModal() {
-    const authOverlay = document.getElementById('authOverlay');
-    if (authOverlay) {
-        authOverlay.style.display = 'flex';
-        document.getElementById('username').focus();
-    }
-}
-
-function hideAuthModal() {
-    const authOverlay = document.getElementById('authOverlay');
-    if (authOverlay) {
-        authOverlay.style.display = 'none';
-        document.getElementById('authForm').reset();
-    }
-}
-
-function logout() {
-    sessionStorage.removeItem('configManagerAuth');
-    setReadOnlyMode();
-    showStatus('Logged out successfully. You are now in view-only mode.', 'success');
-}
-
-// Modify existing functions to check authentication
-function checkAuthForModification() {
-    if (!isAuthenticated) {
-        showStatus('Please login to modify configurations', 'error');
-        showAuthModal();
-        return false;
-    }
-    return true;
-}
-
-// Auth checks are now integrated directly into the functions
-
-// Close auth modal when clicking outside
-window.addEventListener('click', function (event) {
-    const authOverlay = document.getElementById('authOverlay');
-    if (event.target === authOverlay) {
-        hideAuthModal();
-    }
-});
-
-// Close auth modal with Escape key
-document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') {
-        const authOverlay = document.getElementById('authOverlay');
-        if (authOverlay && authOverlay.style.display === 'flex') {
-            hideAuthModal();
-        }
-    }
-});

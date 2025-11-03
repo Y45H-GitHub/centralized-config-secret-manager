@@ -20,16 +20,14 @@ MAX_SERVICE_NAME_LENGTH = 100
 MAX_ENV_NAME_LENGTH = 50
 MAX_CONFIG_KEYS = 100
 
-async def create_config(config_data: dict, user_id: str) -> str:
+async def create_config(config_data: dict) -> str:
     """Create a new configuration and return its ID"""
     try:
-        config_data["user_id"] = ObjectId(user_id)
         # Validate input data
         _validate_config_data(config_data)
         
         # Check for duplicates
         exists = await COLLECTION.find_one({
-            "user_id": ObjectId("user_id"),
             "service_name": config_data["service_name"],
             "env_name": config_data["env_name"]
         })
