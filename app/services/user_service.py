@@ -16,7 +16,11 @@ class UserService:
     def __init__(self):
         self.user_collection = db.users
         self.oauth_collection = db.oauth_accounts
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self.pwd_context = CryptContext(
+            schemes=["bcrypt"], 
+            deprecated="auto",
+            bcrypt__rounds=12  # Explicit rounds for compatibility
+        )
 
     # Email hashing utility
 
@@ -55,7 +59,7 @@ class UserService:
                 "email": user_data.email.lower(),
                 "email_hash": email_hash,
                 "email_verified": False,
-                "password_hash": self.pwd_context.hash(user_data.password),
+                "password_hash": self.pwd_context.hash(user_data.password[:72]),  # bcrypt 72-byte limit
                 "name": user_data.name,
                 "is_admin": False,
                 "created_at": datetime.now(),
@@ -110,7 +114,7 @@ class UserService:
             if not user or not user.password_hash:
                 return None
 
-            if not self.pwd_context.verify(password, user.password_hash):
+            if not self.pwd_context.verify(password[:72], user.password_hash):  # bcrypt 72-byte limit
                 return None
 
             return user
