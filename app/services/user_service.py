@@ -16,10 +16,11 @@ class UserService:
     def __init__(self):
         self.user_collection = db.users
         self.oauth_collection = db.oauth_accounts
+        # Use argon2 instead of bcrypt to avoid compatibility issues
         self.pwd_context = CryptContext(
-            schemes=["bcrypt"], 
+            schemes=["argon2", "bcrypt"], 
             deprecated="auto",
-            bcrypt__rounds=12  # Explicit rounds for compatibility
+            argon2__rounds=4
         )
 
     # Email hashing utility
@@ -55,11 +56,14 @@ class UserService:
             if exists:
                 raise UserAlreadyExistsError(str(user_data.email))
 
+            # Ensure password is within bcrypt limits
+            safe_password = user_data.password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+            
             user_doc = {
                 "email": user_data.email.lower(),
                 "email_hash": email_hash,
                 "email_verified": False,
-                "password_hash": self.pwd_context.hash(user_data.password[:72]),  # bcrypt 72-byte limit
+                "password_hash": self.pwd_context.hash(safe_password),
                 "name": user_data.name,
                 "is_admin": False,
                 "created_at": datetime.now(),
@@ -114,7 +118,9 @@ class UserService:
             if not user or not user.password_hash:
                 return None
 
-            if not self.pwd_context.verify(password[:72], user.password_hash):  # bcrypt 72-byte limit
+            # Ensure password is within bcrypt limits
+            safe_password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+            if not self.pwd_context.verify(safe_password, user.password_hash):
                 return None
 
             return user
