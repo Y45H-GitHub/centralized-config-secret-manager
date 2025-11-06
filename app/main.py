@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import config_routes
+from app.routes import config_routes, auth_routes
 
 app = FastAPI(title='Config Manager')
 
@@ -20,6 +20,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include API routes
 app.include_router(config_routes.router)
+app.include_router(auth_routes.router)
 
 # Health check endpoint for Railway
 @app.get("/health")
