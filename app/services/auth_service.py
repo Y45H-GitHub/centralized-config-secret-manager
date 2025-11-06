@@ -1,9 +1,7 @@
 from datetime import datetime, timedelta
-from fastapi import HTTPException, APIRouter
+from fastapi import HTTPException
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-
-router = APIRouter(prefix="/auth", tags=["configs"])
 
 class AuthService:
     def __init__(self):
