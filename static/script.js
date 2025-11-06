@@ -3,11 +3,16 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
     ? 'http://localhost:8000'
     : window.location.origin;
 
+// Debug: Log when script loads
+console.log('Config Manager script loaded successfully');
+
 // Global state
 let allConfigs = [];
 let filteredConfigs = [];
 let availableEnvironments = [];
 let availableServices = [];
+let currentUser = null;
+let authToken = null;
 
 // DOM Elements - will be set when DOM is ready
 let createForm, editForm, editModal, configsList, statusMessage;
@@ -26,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing app...');
     initializeDOMElements();
     setupEventListeners();
-    loadAllConfigs();
+    checkAuthStatus();
 
     // Add initial empty pair for create form
     setTimeout(() => {
@@ -39,6 +44,8 @@ function setupEventListeners() {
     // Wait for DOM elements to be available
     const createFormEl = document.getElementById('createForm');
     const editFormEl = document.getElementById('editForm');
+    const loginFormEl = document.getElementById('loginForm');
+    const registerFormEl = document.getElementById('registerForm');
     const searchServiceEl = document.getElementById('searchService');
     const searchEnvEl = document.getElementById('searchEnv');
 
@@ -50,46 +57,12 @@ function setupEventListeners() {
         editFormEl.addEventListener('submit', handleEditConfig);
     }
 
-    // Real-time search
-    if (searchServiceEl) {
-        searchServiceEl.addEventListener('input', debounce(performSearch, 300));
+    if (loginFormEl) {
+        loginFormEl.addEventListener('submit', handleLogin);
     }
 
-    if (searchEnvEl) {
-        searchEnvEl.addEventListener('change', performSearch);
-    }
-
-    // Close modal when clicking outside
-    const editModal = document.getElementById('editModal');
-    if (editModal) {
-        window.addEventListener('click', function (event) {
-            if (event.target === editModal) {
-                closeEditModal();
-            }
-        });
-    }
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', function (event) {
-        const editModal = document.getElementById('editModal');
-        if (event.key === 'Escape' && editModal && editModal.style.display === 'block') {
-            closeEditModal();
-        }
-    });
-}
-function setupEventListeners() {
-    // Wait for DOM elements to be available
-    const createFormEl = document.getElementById('createForm');
-    const editFormEl = document.getElementById('editForm');
-    const searchServiceEl = document.getElementById('searchService');
-    const searchEnvEl = document.getElementById('searchEnv');
-
-    if (createFormEl) {
-        createFormEl.addEventListener('submit', handleCreateConfig);
-    }
-
-    if (editFormEl) {
-        editFormEl.addEventListener('submit', handleEditConfig);
+    if (registerFormEl) {
+        registerFormEl.addEventListener('submit', handleRegister);
     }
 
     // Real-time search
@@ -101,17 +74,39 @@ function setupEventListeners() {
         searchEnvEl.addEventListener('change', performSearch);
     }
 
-    // Close modal when clicking outside
+    // Close modals when clicking outside
     window.addEventListener('click', function (event) {
+        const editModal = document.getElementById('editModal');
+        const loginModal = document.getElementById('loginModal');
+        const registerModal = document.getElementById('registerModal');
+
         if (event.target === editModal) {
             closeEditModal();
         }
+        if (event.target === loginModal) {
+            closeLoginModal();
+        }
+        if (event.target === registerModal) {
+            closeRegisterModal();
+        }
     });
 
     // Keyboard shortcuts
     document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && editModal.style.display === 'block') {
-            closeEditModal();
+        if (event.key === 'Escape') {
+            const editModal = document.getElementById('editModal');
+            const loginModal = document.getElementById('loginModal');
+            const registerModal = document.getElementById('registerModal');
+
+            if (editModal && editModal.style.display === 'block') {
+                closeEditModal();
+            }
+            if (loginModal && loginModal.style.display === 'block') {
+                closeLoginModal();
+            }
+            if (registerModal && registerModal.style.display === 'block') {
+                closeRegisterModal();
+            }
         }
     });
 }
@@ -132,6 +127,8 @@ function debounce(func, wait) {
 // Create Configuration
 async function handleCreateConfig(e) {
     e.preventDefault();
+
+    if (!requireAuth()) return;
 
     const serviceName = document.getElementById('serviceName').value.trim();
     const envName = document.getElementById('envName').value;
@@ -156,9 +153,7 @@ async function handleCreateConfig(e) {
 
         const response = await fetch(`${API_BASE}/configs`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         });
 
@@ -181,15 +176,34 @@ async function handleCreateConfig(e) {
     }
 }
 
+// Handle refresh button click
+function handleRefreshClick() {
+    if (!isAuthenticated()) {
+        showStatus('Please login to view configurations', 'error');
+        showLoginModal();
+        return;
+    }
+    loadAllConfigs();
+}
+
 // Load All Configurations
 async function loadAllConfigs() {
+    if (!isAuthenticated()) {
+        showEmptyState();
+        return;
+    }
+
     try {
         showLoading();
 
         // Load configurations and metadata in parallel
         const [configsResponse, environmentsResponse] = await Promise.all([
-            fetch(`${API_BASE}/configs`),
-            fetch(`${API_BASE}/configs/meta/environments`)
+            fetch(`${API_BASE}/configs`, {
+                headers: getAuthHeaders()
+            }),
+            fetch(`${API_BASE}/configs/meta/environments`, {
+                headers: getAuthHeaders()
+            })
         ]);
 
         if (configsResponse.ok && environmentsResponse.ok) {
@@ -404,8 +418,12 @@ function updateStats() {
 
 // Edit Configuration
 async function editConfig(configId) {
+    if (!requireAuth()) return;
+
     try {
-        const response = await fetch(`${API_BASE}/configs/${configId}`);
+        const response = await fetch(`${API_BASE}/configs/${configId}`, {
+            headers: getAuthHeaders()
+        });
 
         if (response.ok) {
             const config = await response.json();
@@ -462,9 +480,7 @@ async function handleEditConfig(e) {
 
         const response = await fetch(`${API_BASE}/configs/${configId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         });
 
@@ -483,6 +499,8 @@ async function handleEditConfig(e) {
 
 // Delete Configuration
 async function deleteConfig(configId) {
+    if (!requireAuth()) return;
+
     // Find the config to show in confirmation
     const config = allConfigs.find(c => c.id === configId);
     const serviceName = config ? config.service_name : 'this configuration';
@@ -493,7 +511,8 @@ async function deleteConfig(configId) {
 
     try {
         const response = await fetch(`${API_BASE}/configs/${configId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: getAuthHeaders()
         });
 
         if (response.ok) {
@@ -771,6 +790,23 @@ function showEmptyState() {
         `;
     }
     updateStats();
+}
+
+function showUnauthenticatedState() {
+    const configsList = document.getElementById('configsList');
+    if (configsList) {
+        configsList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🔐</div>
+                <h3>Welcome to Config Manager</h3>
+                <p>Please <strong>login</strong> or <strong>register</strong> to start managing your configurations securely.</p>
+                <div style="margin-top: 20px;">
+                    <button onclick="showLoginModal()" class="btn btn-primary" style="margin-right: 8px;">Login</button>
+                    <button onclick="showRegisterModal()" class="btn btn-secondary">Register</button>
+                </div>
+            </div>
+        `;
+    }
 }
 
 // Display Configurations
@@ -1276,4 +1312,249 @@ function updateEnvironmentDropdowns() {
             dropdown.value = currentValue;
         }
     });
+}
+
+// ==================== AUTHENTICATION FUNCTIONS ====================
+
+// Check authentication status on page load
+async function checkAuthStatus() {
+    authToken = localStorage.getItem('authToken');
+
+    if (authToken) {
+        try {
+            const response = await fetch(`${API_BASE}/auth/me`, {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+
+            if (response.ok) {
+                currentUser = await response.json();
+                updateUIForLoggedInUser();
+                loadAllConfigs(); // Load configs after authentication
+            } else {
+                // Token is invalid, clear it
+                logout();
+            }
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            logout();
+        }
+    } else {
+        updateUIForLoggedOutUser();
+    }
+}
+
+// Update UI for logged in user
+function updateUIForLoggedInUser() {
+    const userInfo = document.getElementById('userInfo');
+    const authButtons = document.getElementById('authButtons');
+    const userName = document.getElementById('userName');
+
+    if (currentUser && userInfo && authButtons && userName) {
+        userName.textContent = currentUser.name;
+        userInfo.style.display = 'flex';
+        authButtons.style.display = 'none';
+    }
+}
+
+// Update UI for logged out user
+function updateUIForLoggedOutUser() {
+    const userInfo = document.getElementById('userInfo');
+    const authButtons = document.getElementById('authButtons');
+
+    if (userInfo && authButtons) {
+        userInfo.style.display = 'none';
+        authButtons.style.display = 'flex';
+    }
+
+    // Clear configs display
+    showUnauthenticatedState();
+    document.getElementById('totalConfigs').textContent = '-';
+    document.getElementById('totalServices').textContent = '-';
+}
+
+// Show login modal
+function showLoginModal() {
+    const loginModal = document.getElementById('loginModal');
+    if (loginModal) {
+        loginModal.style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('loginEmail').focus();
+        }, 100);
+    }
+}
+
+// Close login modal
+function closeLoginModal() {
+    const loginModal = document.getElementById('loginModal');
+    const loginForm = document.getElementById('loginForm');
+    if (loginModal && loginForm) {
+        loginModal.style.display = 'none';
+        loginForm.reset();
+    }
+}
+
+// Show register modal
+function showRegisterModal() {
+    const registerModal = document.getElementById('registerModal');
+    if (registerModal) {
+        registerModal.style.display = 'block';
+        setTimeout(() => {
+            document.getElementById('registerName').focus();
+        }, 100);
+    }
+}
+
+// Close register modal
+function closeRegisterModal() {
+    const registerModal = document.getElementById('registerModal');
+    const registerForm = document.getElementById('registerForm');
+    if (registerModal && registerForm) {
+        registerModal.style.display = 'none';
+        registerForm.reset();
+    }
+}
+
+// Handle login form submission
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+
+    if (!email || !password) {
+        showStatus('Please fill in all fields', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                email: email,
+                password: password
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            authToken = data.access_token;
+            localStorage.setItem('authToken', authToken);
+
+            showStatus('Login successful!', 'success');
+            closeLoginModal();
+
+            // Get user info and update UI
+            await checkAuthStatus();
+        } else {
+            const error = await response.json();
+            showStatus(`Login failed: ${error.detail}`, 'error');
+        }
+    } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Handle register form submission
+async function handleRegister(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('registerName').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
+
+    if (!name || !email || !password) {
+        showStatus('Please fill in all fields', 'error');
+        return;
+    }
+
+    if (password.length < 8) {
+        showStatus('Password must be at least 8 characters long', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/register`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                email: email,
+                password: password
+            })
+        });
+
+        if (response.ok) {
+            showStatus('Account created successfully! Please login.', 'success');
+            closeRegisterModal();
+            showLoginModal();
+
+            // Pre-fill login form with registered email
+            document.getElementById('loginEmail').value = email;
+        } else {
+            const error = await response.json();
+            showStatus(`Registration failed: ${error.detail}`, 'error');
+        }
+    } catch (error) {
+        showStatus(`Error: ${error.message}`, 'error');
+    }
+}
+
+// Logout function
+function logout() {
+    authToken = null;
+    currentUser = null;
+    localStorage.removeItem('authToken');
+    updateUIForLoggedOutUser();
+    showStatus('Logged out successfully', 'success');
+}
+
+// Get auth headers for API requests
+function getAuthHeaders() {
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    return headers;
+}
+
+// Check if user is authenticated
+function isAuthenticated() {
+    return authToken && currentUser;
+}
+
+// Require authentication for actions
+function requireAuth(action) {
+    if (!isAuthenticated()) {
+        showStatus('Please login to perform this action', 'error');
+        showLoginModal();
+        return false;
+    }
+    return true;
+}
+
+// Toggle password visibility
+function togglePasswordVisibility(inputId) {
+    const passwordInput = document.getElementById(inputId);
+    const toggleButton = passwordInput.nextElementSibling;
+
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleButton.textContent = '🙈';
+        toggleButton.title = 'Hide Password';
+    } else {
+        passwordInput.type = 'password';
+        toggleButton.textContent = '👁️';
+        toggleButton.title = 'Show Password';
+    }
 }

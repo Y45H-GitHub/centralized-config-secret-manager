@@ -18,7 +18,14 @@
                 <p>Centralized configuration management for your services</p>
             </div>
             <div class="header-right">
-
+                <div id="userInfo" class="user-info" style="display: none;">
+                    <span id="userName">Loading...</span>
+                    <button onclick="logout()" class="btn btn-secondary btn-sm">Logout</button>
+                </div>
+                <div id="authButtons" class="auth-buttons">
+                    <button onclick="showLoginModal()" class="btn btn-secondary btn-sm">Login</button>
+                    <button onclick="showRegisterModal()" class="btn btn-primary btn-sm">Register</button>
+                </div>
                 <div class="status-indicator">
                     <div class="status-dot"></div>
                     <span>API Connected</span>
@@ -124,7 +131,7 @@
                 <div class="content-header">
                     <h2 class="content-title">Configurations</h2>
                     <div class="content-actions">
-                        <button onclick="loadAllConfigs()" class="btn btn-secondary">
+                        <button onclick="handleRefreshClick()" class="btn btn-secondary">
                             Refresh
                         </button>
                     </div>
@@ -231,7 +238,100 @@
         </div>
     </div>
 
-    <script src="/static/script.js"></script>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Login</h3>
+                <button class="modal-close" onclick="closeLoginModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginEmail">Email</label>
+                        <input type="email" id="loginEmail" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Password</label>
+                        <div class="password-input-container">
+                            <input type="password" id="loginPassword" required placeholder="Enter your password">
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('loginPassword')" title="Show/Hide Password">
+                                👁️
+                            </button>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">
+                            Login
+                        </button>
+                        <button type="button" onclick="closeLoginModal()" class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+                <div style="text-align: center; margin-top: 16px;">
+                    <small style="color: var(--text-secondary);">
+                        Don't have an account?
+                        <a href="#" onclick="closeLoginModal(); showRegisterModal();"
+                            style="color: var(--accent-secondary);">Register here</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Account</h3>
+                <button class="modal-close" onclick="closeRegisterModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="registerName">Full Name</label>
+                        <input type="text" id="registerName" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerEmail">Email</label>
+                        <input type="email" id="registerEmail" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="registerPassword">Password</label>
+                        <div class="password-input-container">
+                            <input type="password" id="registerPassword" required placeholder="At least 8 characters">
+                            <button type="button" class="password-toggle"
+                                onclick="togglePasswordVisibility('registerPassword')" title="Show/Hide Password">
+                                👁️
+                            </button>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">
+                            Password must be at least 8 characters long
+                        </small>
+                    </div>
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">
+                            Create Account
+                        </button>
+                        <button type="button" onclick="closeRegisterModal()" class="btn btn-secondary">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+                <div style="text-align: center; margin-top: 16px;">
+                    <small style="color: var(--text-secondary);">
+                        Already have an account?
+                        <a href="#" onclick="closeRegisterModal(); showLoginModal();"
+                            style="color: var(--accent-secondary);">Login here</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js?v=3"></script>
 </body>
 
 </html>

@@ -783,3 +783,122 @@ header {
         min-width: auto;
     }
 }
+
+/* Authent
+ication UI */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: 6px;
+    font-size: 0.875rem;
+}
+
+.user-info span {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.auth-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* Login/Register Modal Specific Styles */
+#loginModal .modal-content,
+#registerModal .modal-content {
+    max-width: 400px;
+}
+
+#loginForm .form-group,
+#registerForm .form-group {
+    margin-bottom: 20px;
+}
+
+#loginForm .button-group,
+#registerForm .button-group {
+    margin-top: 24px;
+}
+
+/* Auth form inputs */
+#loginForm input,
+#registerForm input {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+}
+
+#loginForm input:focus,
+#registerForm input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(35, 134, 54, 0.12);
+}
+
+/* Password input container */
+.password-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-container input {
+    flex: 1;
+    padding-right: 45px;
+    /* Make room for the toggle button */
+}
+
+.password-toggle {
+    position: absolute;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.password-toggle:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.password-toggle:focus {
+    outline: none;
+    background: var(--bg-hover);
+    box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.3);
+}
+
+/* Auth links */
+a {
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive auth UI */
+@media (max-width: 768px) {
+    .header-right {
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+    }
+
+    .user-info {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+
+    .auth-buttons .btn {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+}
