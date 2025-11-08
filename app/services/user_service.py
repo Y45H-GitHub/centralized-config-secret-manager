@@ -147,3 +147,58 @@ class UserService:
         except Exception as e:
             logger.error(f"Error getting user by ID {user_id}: {e}")
             return None
+
+
+    # OAuth User Creation (Simple version for learning)
+    async def create_oauth_user(self, email: str, name: str, provider: str, provider_user_id: str) -> str:
+        """
+        Create a new user from OAuth login (Google, GitHub, etc.)
+        
+        Key differences from regular user:
+        - No password (they login via Google)
+        - We store which provider they used
+        - We store their provider's user ID
+        """
+        try:
+            # Step 1: Check if user already exists
+            email_hash = self._hash_email(email)
+            exists = await self.user_collection.find_one({"email_hash": email_hash})
+            
+            if exists:
+                # User already exists, just return their ID
+                from bson import ObjectId
+                return str(exists["_id"])
+            
+            # Step 2: Create new user document
+            user_doc = {
+                "email": email.lower(),
+                "email_hash": email_hash,
+                "email_verified": True,  # Google already verified their email
+                "password_hash": None,  # No password for OAuth users
+                "name": name,
+                "is_admin": False,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "auth_providers": [provider]  # ["google"] or ["github"]
+            }
+            
+            # Step 3: Insert into database
+            result = await self.user_collection.insert_one(user_doc)
+            user_id = str(result.inserted_id)
+            
+            # Step 4: Store OAuth account details in separate collection
+            oauth_doc = {
+                "user_id": result.inserted_id,
+                "provider": provider,  # "google" or "github"
+                "provider_user_id": provider_user_id,  # Google's ID for this user
+                "created_at": datetime.now(),
+                "updated_at": datetime.now()
+            }
+            await self.oauth_collection.insert_one(oauth_doc)
+            
+            logger.info(f"Created OAuth user {email} with provider {provider}")
+            return user_id
+            
+        except Exception as e:
+            logger.error(f"Error creating OAuth user {email}: {str(e)}")
+            raise DatabaseConnectionError()

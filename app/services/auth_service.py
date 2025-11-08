@@ -6,7 +6,7 @@ from passlib.context import CryptContext
 class AuthService:
     def __init__(self):
         self.pwd_context = CryptContext(schemes=["bcrypt"])
-        self.secret_key = "secret-key-to-be-added-later"
+        self.secret_key = "8795a9e50c02301ae0101cf18d1364bc"
         self.algorithm = "HS256"
 
     def create_access_token(self, user_id:str)->str:
