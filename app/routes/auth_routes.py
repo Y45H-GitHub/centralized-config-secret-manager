@@ -1,11 +1,8 @@
-import urllib.parse
 from fastapi import APIRouter, HTTPException, Depends
 from app.models.user_schemas import UserCreate, UserLogin, UserResponse
 from app.services.user_service import UserService
 from app.services.auth_service import AuthService
 from app.core.auth import get_current_user
-import os
-import requests
 from  dotenv import load_dotenv
 
 load_dotenv()
@@ -90,7 +87,7 @@ async def get_current_user_info(current_user_id: str = Depends(get_current_user)
         raise HTTPException(status_code=500, detail="Internal server error")
 
 # ============================================
-# OAuth Routes - THIN layer, just calls services
+# OAuth Routes
 # ============================================
 
 @router.get("/google/login")
