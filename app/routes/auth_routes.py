@@ -3,7 +3,10 @@ from app.models.user_schemas import UserCreate, UserLogin, UserResponse
 from app.services.user_service import UserService
 from app.services.auth_service import AuthService
 from app.core.auth import get_current_user
+from app.services.oauth_service import OAuthService
 from  dotenv import load_dotenv
+from fastapi.responses import RedirectResponse
+import urllib.parse
 
 load_dotenv()
 
@@ -108,10 +111,14 @@ def google_login():
 async def google_callback(code: str):
     """
     Step 2: Handle Google OAuth callback
-
-    """
-    from app.services.oauth_service import OAuthService
     
+    Instead of returning JSON, we redirect back to the frontend
+    with the token in the URL. The frontend JavaScript will:
+    1. Extract the token from URL
+    2. Store it in localStorage
+    3. Clean up the URL
+    4. Update the UI
+    """
     try:
         # Initialize services
         oauth_service = OAuthService()
@@ -125,11 +132,18 @@ async def google_callback(code: str):
             auth_service=auth_service
         )
         
-        return result
+        # Instead of returning JSON, redirect to frontend with token
+        # Frontend will be at: http://localhost:8000/?token=...&user=...
+        token = result["token"]
+        user_json = urllib.parse.quote(str(result["user"]).replace("'", '"'))
+        
+        # Redirect to homepage with token in URL
+        redirect_url = f"/?token={token}&user={user_json}"
+        return RedirectResponse(url=redirect_url)
         
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
+        # On error, redirect to homepage with error message
+        return RedirectResponse(url="/?error=oauth_failed")
     except Exception as e:
         # Catch any unexpected errors
-        raise HTTPException(status_code=500, detail=f"OAuth error: {str(e)}")
+        return RedirectResponse(url=f"/?error={str(e)}")

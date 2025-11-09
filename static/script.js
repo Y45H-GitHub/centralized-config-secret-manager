@@ -1558,3 +1558,193 @@ function togglePasswordVisibility(inputId) {
         toggleButton.title = 'Show Password';
     }
 }
+
+// ============================================
+// OAuth Functions
+// ============================================
+
+/**
+ * Initiate Google OAuth login
+ *
+ * Flow:
+ * 1. Call backend to get Google's authorization URL
+ * 2. Redirect user to Google's login page
+ * 3. User logs in and approves
+ * 4. Google redirects back to /auth/google/callback
+ * 5. Backend handles callback and returns JWT
+ */
+async function loginWithGoogle() {
+    try {
+        // Step 1: Get Google's authorization URL from backend
+        const response = await fetch(`${API_BASE}/auth/google/login`);
+
+        if (!response.ok) {
+            throw new Error('Failed to initiate Google login');
+        }
+
+        const data = await response.json();
+
+        // Step 2: Redirect user to Google's login page
+        // Google will redirect back to /auth/google/callback after login
+        window.location.href = data.auth_url;
+
+    } catch (error) {
+        console.error('Google login error:', error);
+        showStatus('Failed to start Google login. Please try again.', 'error');
+    }
+}
+
+/**
+ * Handle OAuth callback
+ *
+ * Backend redirects back with token in URL:
+ * http://localhost:8000/?token=eyJhbG...&user={...}
+ *
+ * We need to:
+ * 1. Extract token and user from URL
+ * 2. Store in localStorage
+ * 3. Clean up URL
+ * 4. Update UI
+ */
+function handleOAuthCallback() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const userParam = urlParams.get('user');
+    const error = urlParams.get('error');
+
+    // Check for error first
+    if (error) {
+        showStatus('OAuth login failed. Please try again.', 'error');
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+    }
+
+    // Check if we have token (OAuth callback)
+    if (!token) {
+        // Not a callback, normal page load
+        return;
+    }
+
+    console.log('OAuth callback detected, processing token...');
+
+    try {
+        // Parse user data
+        let user;
+        try {
+            // User data comes as URL-encoded JSON string
+            user = JSON.parse(decodeURIComponent(userParam));
+        } catch (e) {
+            console.error('Error parsing user data:', e);
+            throw new Error('Invalid user data');
+        }
+
+        // Store the JWT token and user info
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        // Clean up URL (remove ?token=... from address bar)
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        // Show success and update UI
+        showStatus(`Welcome, ${user.name}!`, 'success');
+        updateUIForLoggedInUser(user);
+
+    } catch (error) {
+        console.error('OAuth callback error:', error);
+        showStatus('Failed to complete Google login. Please try again.', 'error');
+
+        // Clean up URL even on error
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+/**
+ * Update UI when user is logged in
+ */
+function updateUIForLoggedInUser(user) {
+    // IMPORTANT: Set the global auth variables
+    // These are used by isAuthenticated() and getAuthHeaders()
+    authToken = localStorage.getItem('token');
+    currentUser = user;
+
+    // Hide login/register buttons
+    const authButtons = document.getElementById('authButtons');
+    if (authButtons) {
+        authButtons.style.display = 'none';
+    }
+
+    // Show user info
+    const userInfo = document.getElementById('userInfo');
+    const userName = document.getElementById('userName');
+    if (userInfo && userName) {
+        userName.textContent = user.name || user.email;
+        userInfo.style.display = 'flex';
+    }
+
+    // Close any open modals
+    closeLoginModal();
+    closeRegisterModal();
+
+    // Load configs now that user is authenticated
+    loadAllConfigs();
+}
+
+/**
+ * Check if user is already logged in on page load
+ */
+function checkExistingAuth() {
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+
+    if (token && userStr) {
+        try {
+            const user = JSON.parse(userStr);
+            updateUIForLoggedInUser(user);
+        } catch (error) {
+            console.error('Error parsing stored user:', error);
+            // Clear invalid data
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+        }
+    }
+}
+
+/**
+ * Logout function
+ */
+function logout() {
+    // Clear stored data
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
+    // IMPORTANT: Clear the global auth variables
+    authToken = null;
+    currentUser = null;
+
+    // Show login/register buttons
+    const authButtons = document.getElementById('authButtons');
+    if (authButtons) {
+        authButtons.style.display = 'flex';
+    }
+
+    // Hide user info
+    const userInfo = document.getElementById('userInfo');
+    if (userInfo) {
+        userInfo.style.display = 'none';
+    }
+
+    // Clear configs display
+    showEmptyState();
+
+    showStatus('Logged out successfully', 'success');
+}
+
+// Initialize OAuth handling on page load
+document.addEventListener('DOMContentLoaded', function () {
+    // Check if user is already logged in
+    checkExistingAuth();
+
+    // Handle OAuth callback if present
+    handleOAuthCallback();
+});
