@@ -473,3 +473,13 @@ GET  /auth/google/callback  # Handle OAuth callback and login
 - Add refresh token handling
 - Link configs to authenticated users
 - Add GitHub OAuth provider
+
+## 9 Nov, 2025
+- redis layer + email layer for sending request token on registration via email + password
+- redis on render using qwik1 acc
+- email, SMTP , main acc
+- **OAuth production deployment** - Fixed Google OAuth on Render
+- **Environment variable configuration** - Properly set all OAuth env vars on Render
+- **Debugging OAuth issues** - Identified redirect_uri was null in production
+- **Root cause**: Render doesn't read .env files, need manual env var setup in dashboard
+
