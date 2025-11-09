@@ -1640,7 +1640,7 @@ function handleOAuthCallback() {
         }
 
         // Store the JWT token and user info
-        localStorage.setItem('token', token);
+        localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(user));
 
         // Clean up URL (remove ?token=... from address bar)
@@ -1665,7 +1665,7 @@ function handleOAuthCallback() {
 function updateUIForLoggedInUser(user) {
     // IMPORTANT: Set the global auth variables
     // These are used by isAuthenticated() and getAuthHeaders()
-    authToken = localStorage.getItem('token');
+    authToken = localStorage.getItem('authToken');
     currentUser = user;
 
     // Hide login/register buttons
@@ -1694,7 +1694,7 @@ function updateUIForLoggedInUser(user) {
  * Check if user is already logged in on page load
  */
 function checkExistingAuth() {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     const userStr = localStorage.getItem('user');
 
     if (token && userStr) {
@@ -1704,7 +1704,7 @@ function checkExistingAuth() {
         } catch (error) {
             console.error('Error parsing stored user:', error);
             // Clear invalid data
-            localStorage.removeItem('token');
+            localStorage.removeItem('authToken');
             localStorage.removeItem('user');
         }
     }
@@ -1715,7 +1715,7 @@ function checkExistingAuth() {
  */
 function logout() {
     // Clear stored data
-    localStorage.removeItem('token');
+    localStorage.removeItem('authToken');
     localStorage.removeItem('user');
 
     // IMPORTANT: Clear the global auth variables
