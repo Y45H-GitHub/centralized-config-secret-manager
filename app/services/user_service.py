@@ -148,7 +148,6 @@ class UserService:
             logger.error(f"Error getting user by ID {user_id}: {e}")
             return None
 
-
     # OAuth User Creation (Simple version for learning)
     async def create_oauth_user(self, email: str, name: str, provider: str, provider_user_id: str) -> str:
         """
@@ -202,3 +201,4 @@ class UserService:
         except Exception as e:
             logger.error(f"Error creating OAuth user {email}: {str(e)}")
             raise DatabaseConnectionError()
+

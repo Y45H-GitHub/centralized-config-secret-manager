@@ -13,6 +13,7 @@ class User(BaseModel):
     password_hash : Optional[str] = None
     name: str
     is_admin: bool
+    is_active: bool
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     auth_provider: List[str] = []
