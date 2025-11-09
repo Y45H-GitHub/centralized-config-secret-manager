@@ -52,6 +52,11 @@ class OAuthService:
             "prompt": "consent"  # Always show consent screen
         }
         
+        # Debug logging
+        print(f"[DEBUG] Environment: {os.getenv('ENVIRONMENT', 'local')}")
+        print(f"[DEBUG] Redirect URI being used: {self.google_redirect_uri}")
+        print(f"[DEBUG] Client ID: {self.google_client_id[:20]}...")
+        
         # Build the full URL with query parameters
         url = f"{self.google_auth_url}?{urllib.parse.urlencode(params)}"
         return url

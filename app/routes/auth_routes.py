@@ -100,11 +100,20 @@ def google_login():
 
     """
     from app.services.oauth_service import OAuthService
+    import os
     
     oauth_service = OAuthService()
     auth_url = oauth_service.get_google_auth_url()
     
-    return {"auth_url": auth_url}
+    # Return debug info along with auth URL
+    return {
+        "auth_url": auth_url,
+        "debug": {
+            "environment": os.getenv("ENVIRONMENT", "local"),
+            "redirect_uri": oauth_service.google_redirect_uri,
+            "client_id": oauth_service.google_client_id[:20] + "..."
+        }
+    }
 
 
 @router.get("/google/callback")
