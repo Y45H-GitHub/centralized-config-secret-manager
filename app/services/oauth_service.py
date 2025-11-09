@@ -20,7 +20,14 @@ class OAuthService:
         # Google OAuth configuration
         self.google_client_id = os.getenv("GOOGLE_CLIENT_ID")
         self.google_client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
-        self.google_redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+        
+        # Determine redirect URI based on environment
+        environment = os.getenv("ENVIRONMENT", "local")
+        if environment == "production":
+            self.google_redirect_uri = os.getenv("PRODUCTION_REDIRECT_URI")
+        else:
+            self.google_redirect_uri = os.getenv("LOCAL_REDIRECT_URI")
+        
         self.google_auth_url = os.getenv("GOOGLE_AUTH_URL")
         self.google_token_url = os.getenv("GOOGLE_TOKEN_URL")
         self.google_userinfo_url = os.getenv("GOOGLE_USERINFO_URL")
